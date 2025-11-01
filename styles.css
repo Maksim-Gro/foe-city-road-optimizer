@@ -177,10 +177,25 @@ body {
 }
 
 .legend-section,
+.view-mode-section,
 .info-section {
     padding: 12px;
     background: var(--bg-color);
     border-radius: 8px;
+}
+
+.view-mode-section h3 {
+    font-size: 1em;
+    margin-bottom: 8px;
+    color: var(--text-primary);
+}
+
+#view-mode-select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: white;
 }
 
 .legend-section h3 {
@@ -635,6 +650,10 @@ body {
     cursor: crosshair;
     background: #fafafa;
     box-shadow: var(--shadow);
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
 }
 
 .canvas-overlay {
