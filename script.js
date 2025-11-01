@@ -198,6 +198,7 @@ function closeModal() {
     document.getElementById('building-name').value = '';
     document.getElementById('building-width').value = '3';
     document.getElementById('building-height').value = '3';
+    document.getElementById('building-quantity').value = '1';
     document.getElementById('requires-road').checked = false;
 }
 
@@ -206,7 +207,9 @@ function addBuilding() {
     const name = document.getElementById('building-name').value.trim();
     const width = parseInt(document.getElementById('building-width').value);
     const height = parseInt(document.getElementById('building-height').value);
+    const quantity = parseInt(document.getElementById('building-quantity').value) || 1;
     const requiresRoad = document.getElementById('requires-road').checked;
+    
     if (!name) {
         alert('Please enter a building name');
         return;
@@ -217,23 +220,107 @@ function addBuilding() {
         return;
     }
     
-    const building = {
-        id: 'building-' + Date.now(),
-        name: name,
-        width: width,
-        height: height,
-        x: 0,
-        y: 0,
-        requiresRoad: requiresRoad,
-        color: requiresRoad ? buildingColorRoad : buildingColorNoRoad,
-        isTownHall: false,
-        visible: true
-    };
+    if (quantity < 1 || quantity > 100) {
+        alert('Quantity must be between 1 and 100');
+        return;
+    }
     
-    buildings.push(building);
-    updateBuildingList();
+    // Add multiple buildings at once
+    let successCount = 0;
+    let failCount = 0;
+    
+    for (let i = 0; i < quantity; i++) {
+        const building = {
+            id: 'building-' + Date.now() + '-' + i,
+            name: name,
+            width: width,
+            height: height,
+            x: 0,
+            y: 0,
+            requiresRoad: requiresRoad,
+            color: requiresRoad ? buildingColorRoad : buildingColorNoRoad,
+            isTownHall: false,
+            visible: true
+        };
+        
+        // Try to place building automatically
+        if (placeBuildingAutomatically(building)) {
+            buildings.push(building);
+            successCount++;
+        } else {
+            failCount++;
+        }
+    }
+    
+    if (successCount > 0) {
+        rebuildRoads();
+        updateBuildingList();
+        redraw();
+        
+        if (failCount > 0) {
+            alert(`Added ${successCount} building(s), ${failCount} could not be placed (no space available)`);
+        } else if (successCount > 1) {
+            alert(`Added ${successCount} building(s) successfully`);
+        }
+    } else {
+        alert(`Could not place any buildings. The grid may be full or there's not enough space.`);
+    }
+    
     closeModal();
-    redraw();
+}
+
+// Automatically place a building on the grid
+function placeBuildingAutomatically(building) {
+    // Try to find a valid position starting from Town Hall position
+    const townHall = buildings.find(b => b.isTownHall);
+    let startX = 0;
+    let startY = 0;
+    
+    if (townHall) {
+        // Start searching from Town Hall area
+        startX = townHall.x + townHall.width + 1;
+        startY = townHall.y;
+    }
+    
+    // Try positions in a spiral pattern starting from Town Hall
+    const maxRadius = Math.max(gridWidth, gridHeight);
+    
+    for (let radius = 0; radius < maxRadius; radius++) {
+        for (let dx = -radius; dx <= radius; dx++) {
+            for (let dy = -radius; dy <= radius; dy++) {
+                // Only check perimeter of current radius
+                if (Math.abs(dx) === radius || Math.abs(dy) === radius) {
+                    let x = startX + dx;
+                    let y = startY + dy;
+                    
+                    // Ensure coordinates are valid
+                    x = Math.max(0, Math.min(x, gridWidth - building.width));
+                    y = Math.max(0, Math.min(y, gridHeight - building.height));
+                    
+                    building.x = x;
+                    building.y = y;
+                    
+                    if (canPlaceBuilding(building, x, y)) {
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+    
+    // If spiral search failed, try grid scan
+    for (let y = 0; y <= gridHeight - building.height; y++) {
+        for (let x = 0; x <= gridWidth - building.width; x++) {
+            building.x = x;
+            building.y = y;
+            
+            if (canPlaceBuilding(building, x, y)) {
+                return true;
+            }
+        }
+    }
+    
+    return false;
 }
 
 // Update building list in sidebar
@@ -295,6 +382,7 @@ function editBuilding(building) {
     document.getElementById('building-name').value = building.name;
     document.getElementById('building-width').value = building.width;
     document.getElementById('building-height').value = building.height;
+    document.getElementById('building-quantity').value = '1';
     document.getElementById('requires-road').checked = building.requiresRoad;
     document.getElementById('add-building-modal').classList.add('active');
     
